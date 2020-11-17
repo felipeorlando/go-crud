@@ -1,0 +1,21 @@
+version: '3.3'
+
+services:
+  api:
+    command: "./api"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    depends_on:
+      - 'mongo'
+  mongo:
+    image: 'mongo:latest'
+    volumes:
+      - mongo:/data/db
+    ports:
+      - '27017:27017'
+
+volumes:
+  mongo:
