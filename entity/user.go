@@ -16,6 +16,15 @@ type UserSchema struct {
 	Address  string        `bson:"address" json:"address"`
 }
 
+// UserUpdateSchema TODO
+type UserUpdateSchema struct {
+	Name     *string `bson:"name" json:"name,omitempty"`
+	Age      *int    `bson:"age" json:"age,omitempty"`
+	Email    *string `bson:"email" json:"email,omitempty"`
+	Password *string `bson:"password" json:"password,omitempty"`
+	Address  *string `bson:"address" json:"address,omitempty"`
+}
+
 // UserRepo is a struct that represents the users repo on Mongo
 type UserRepo struct {
 	Collection *mgo.Collection
@@ -56,8 +65,17 @@ func (r *UserRepo) Delete(id string) error {
 }
 
 // Update updates an user
-func (r *UserRepo) Update(id string, user UserSchema) error {
-	err := r.Collection.UpdateId(bson.ObjectIdHex(id), &user)
+func (r *UserRepo) Update(id string, user bson.M) error {
+	if user["password"] != nil {
+		pwd, err := generatePassword(user["password"].(string))
+		if err != nil {
+			return err
+		}
+
+		user["password"] = pwd
+	}
+
+	err := r.Collection.UpdateId(bson.ObjectIdHex(id), bson.M{"$set": user})
 	return err
 }
 

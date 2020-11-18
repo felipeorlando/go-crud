@@ -10,7 +10,7 @@ dep:
 
 build: dep clean
 	@echo "Building server"
-	@go build -o ./cmd/api api/main.go
+	@go build -o ./cmd/api api/server.go
 
 clean:
 	@echo "Cleaning the last build"
