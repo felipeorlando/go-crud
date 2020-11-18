@@ -5,22 +5,20 @@ import (
 	"net/http"
 
 	"com.go-crud/entity"
-	"com.go-crud/infrastructure"
 	"github.com/globalsign/mgo"
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 )
 
-var dao infrastructure.UserDAO
+var repo *entity.UserRepo
 
 // Init sets initial setup for user service with db connection
 func Init(db *mgo.Database) {
-	dao = infrastructure.UserDAO{Collection: db.C("users")}
+	repo = &entity.UserRepo{Collection: db.C("users")}
 }
 
 // GetAll get all users
 func GetAll(w http.ResponseWriter, r *http.Request) {
-	users, err := dao.GetAll()
+	users, err := repo.GetAll()
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -33,7 +31,7 @@ func GetAll(w http.ResponseWriter, r *http.Request) {
 func GetByID(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 
-	movie, err := dao.GetByID(params["id"])
+	movie, err := repo.GetByID(params["id"])
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid Movie ID")
 		return
@@ -46,26 +44,24 @@ func GetByID(w http.ResponseWriter, r *http.Request) {
 func Create(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var user entity.User
+	var user entity.UserSchema
 
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		log.Errorln("Error on decoder:", err)
+	if err := validateExistingOfAllFields(user); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	userReady, err := user.ReadyToCreate()
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	if err := dao.Create(userReady); err != nil {
+	if err := repo.Create(user); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, userReady)
+	respondWithJSON(w, http.StatusCreated, user)
 }
 
 // Update updates an user
@@ -74,26 +70,24 @@ func Update(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
 
-	var user entity.User
+	var user entity.UserSchema
+
+	if err := validateEmptynessOfAllFields(user); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 
-	userReady, err := user.ReadyToUpdate()
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	if err := dao.Update(params["id"], userReady); err != nil {
-		log.Error(params["id"])
+	if err := repo.Update(params["id"], user); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]string{"result": userReady.Name + " successfully updated!"})
+	respondWithJSON(w, http.StatusOK, map[string]string{"result": user.Name + " successfully updated!"})
 }
 
 // Delete deletes an user
@@ -102,7 +96,7 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
 
-	if err := dao.Delete(params["id"]); err != nil {
+	if err := repo.Delete(params["id"]); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -111,7 +105,6 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func respondWithError(w http.ResponseWriter, code int, msg string) {
-	log.Error(msg)
 	respondWithJSON(w, code, map[string]string{"error": msg})
 }
 
