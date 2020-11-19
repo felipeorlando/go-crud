@@ -18,15 +18,15 @@ func NewRoutes(db *mgo.Database, router *mux.Router) {
 	repo = &entity.UserRepo{Collection: db.C("users")}
 
 	userRouter := router.PathPrefix("/users").Subrouter()
-	userRouter.HandleFunc("", GetAll).Methods("GET")
-	userRouter.HandleFunc("/{id}", GetByID).Methods("GET")
-	userRouter.HandleFunc("", Create).Methods("POST")
-	userRouter.HandleFunc("/{id}", Update).Methods("PUT")
-	userRouter.HandleFunc("/{id}", Delete).Methods("DELETE")
+	userRouter.HandleFunc("", Index).Methods("GET")
+	userRouter.HandleFunc("/{id}", Show).Methods("GET")
+	userRouter.HandleFunc("", New).Methods("POST")
+	userRouter.HandleFunc("/{id}", Edit).Methods("PUT")
+	userRouter.HandleFunc("/{id}", Destroy).Methods("DELETE")
 }
 
-// GetAll get all users
-func GetAll(w http.ResponseWriter, r *http.Request) {
+// Index get all users
+func Index(w http.ResponseWriter, r *http.Request) {
 	users, err := repo.GetAll()
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, utils.ErrInternalServer.Error())
@@ -36,8 +36,8 @@ func GetAll(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, users)
 }
 
-// GetByID get unique user by ID
-func GetByID(w http.ResponseWriter, r *http.Request) {
+// Show get unique user by ID
+func Show(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 
 	movie, err := repo.GetByID(params["id"])
@@ -49,8 +49,8 @@ func GetByID(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, movie)
 }
 
-// Create creates a new user
-func Create(w http.ResponseWriter, r *http.Request) {
+// New creates a new user
+func New(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var user entity.UserSchema
@@ -60,21 +60,22 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateExistingOfAllFields(user); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, utils.ErrBadRequest.Error())
+	if err := ValidateExistingOfAllFields(user); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := repo.Create(user); err != nil {
+	savedUser, err := repo.Create(user)
+	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	utils.RespondWithJSON(w, http.StatusCreated, user)
+	utils.RespondWithJSON(w, http.StatusCreated, savedUser)
 }
 
-// Update updates an user
-func Update(w http.ResponseWriter, r *http.Request) {
+// Edit updates an user
+func Edit(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	params := mux.Vars(r)
@@ -86,23 +87,24 @@ func Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateEmptynessOfAllFields(u); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, utils.ErrBadRequest.Error())
+	if err := ValidateEmptynessOfAllFields(u); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	idParam := params["id"]
 
-	if err := repo.Update(idParam, u); err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	_, err := repo.Update(idParam, u)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"result": "User successfully updated!"})
 }
 
-// Delete deletes an user
-func Delete(w http.ResponseWriter, r *http.Request) {
+// Destroy deletes an user
+func Destroy(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	params := mux.Vars(r)

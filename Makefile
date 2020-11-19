@@ -1,8 +1,12 @@
-GREEN=\033[0;32m
+TEST_RUN ?= com.go-crud/usecase/user com.go-crud/entity
 
 .PHONY: all dep build clean
 
 all: clean build
+
+test: dep
+	@echo "Testing..."
+	@go test $(TEST_RUN) -v -coverprofile coverage.out
 
 dep:
 	@echo "Getting the dependencies"

@@ -13,7 +13,7 @@ import (
 
 // Start the server
 func Start() {
-	db := database.ConnectDB()
+	db := database.ConnectDB(config.DbNameDev, config.DbURIDev)
 	defer database.CloseDB()
 
 	r := mux.NewRouter()

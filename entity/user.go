@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"com.go-crud/utils"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
 	"golang.org/x/crypto/bcrypt"
@@ -16,7 +17,7 @@ type UserSchema struct {
 	Address  string        `bson:"address" json:"address"`
 }
 
-// UserUpdateSchema TODO
+// UserUpdateSchema is the schema to validate fields for update
 type UserUpdateSchema struct {
 	Name     *string `bson:"name" json:"name,omitempty"`
 	Age      *int    `bson:"age" json:"age,omitempty"`
@@ -40,43 +41,49 @@ func (r *UserRepo) GetAll() ([]UserSchema, error) {
 // GetByID get unique user by ID
 func (r *UserRepo) GetByID(id string) (UserSchema, error) {
 	var user UserSchema
-	err := r.Collection.FindId(bson.ObjectIdHex(id)).One(&user)
-	return user, err
+	if err := r.Collection.FindId(bson.ObjectIdHex(id)).One(&user); err != nil {
+		return user, utils.ErrNotFound
+	}
+
+	return user, nil
 }
 
 // Create creates a new user
-func (r *UserRepo) Create(user UserSchema) error {
-	pwd, err := generatePassword(user.Password)
+func (r *UserRepo) Create(u UserSchema) (UserSchema, error) {
+	pwd, err := generatePassword(u.Password)
 	if err != nil {
-		return err
+		return u, err
 	}
 
-	user.ID = bson.NewObjectId()
-	user.Password = pwd
+	u.ID = bson.NewObjectId()
+	u.Password = pwd
 
-	err = r.Collection.Insert(&user)
-	return err
+	err = r.Collection.Insert(&u)
+	return u, err
 }
 
 // Delete deletes an user
 func (r *UserRepo) Delete(id string) error {
-	err := r.Collection.RemoveId(bson.ObjectIdHex(id))
-	return err
+	if err := r.Collection.RemoveId(bson.ObjectIdHex(id)); err != nil {
+		return utils.ErrNotFound
+	}
+
+	return nil
 }
 
 // Update updates an user
-func (r *UserRepo) Update(id string, user bson.M) error {
-	if user["password"] != nil {
-		pwd, err := generatePassword(user["password"].(string))
+func (r *UserRepo) Update(id string, u bson.M) (bson.M, error) {
+	if u["password"] != nil {
+		pwd, err := generatePassword(u["password"].(string))
 		if err != nil {
-			return err
+			return u, err
 		}
 
-		user["password"] = pwd
+		u["password"] = pwd
 	}
 
-	err := r.Collection.UpdateId(bson.ObjectIdHex(id), bson.M{"$set": user})
-	return err
+	err := r.Collection.UpdateId(bson.ObjectIdHex(id), bson.M{"$set": u})
+	return u, err
 }
 
 func generatePassword(raw string) (string, error) {

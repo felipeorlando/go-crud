@@ -1,23 +1,25 @@
 package user
 
 import (
-	"errors"
+	"com.go-crud/utils"
 
 	"com.go-crud/entity"
 	"github.com/globalsign/mgo/bson"
 )
 
-func validateExistingOfAllFields(u entity.UserSchema) error {
+// ValidateExistingOfAllFields validate existing of all fileds
+func ValidateExistingOfAllFields(u entity.UserSchema) error {
 	if u.Name == "" || u.Age == 0 || u.Email == "" || u.Password == "" || u.Address == "" {
-		return errors.New("You need to pass all params")
+		return utils.ErrBadRequest
 	}
 
 	return nil
 }
 
-func validateEmptynessOfAllFields(u bson.M) error {
+// ValidateEmptynessOfAllFields validate existing of at least one field
+func ValidateEmptynessOfAllFields(u bson.M) error {
 	if u["name"] == nil && u["age"] == nil && u["email"] == nil && u["password"] == nil && u["address"] == nil {
-		return errors.New("You need to pass at least one param")
+		return utils.ErrBadRequest
 	}
 
 	return nil
